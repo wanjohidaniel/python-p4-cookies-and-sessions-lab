@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
 
+import warnings
+
+# Ignore all warnings
+warnings.filterwarnings("ignore")
+
 from flask import Flask, make_response, jsonify, session
 from flask_migrate import Migrate
 
@@ -15,20 +20,26 @@ migrate = Migrate(app, db)
 
 db.init_app(app)
 
-@app.route('/clear')
+@app.route('/articles/<int:id>', methods=['GET'])
+def get_article(id):
+    article = Article.query.get(id)
+    if article is None:
+        return make_response(jsonify({'error': 'article not found'}), 404)
+
+    if 'page_views' not in session:
+        session['page_views'] = 0
+
+    session['page_views'] += 1
+
+    if session['page_views'] <= 3:
+        return make_response(jsonify(article.to_dict()), 200)
+    else:
+        return make_response(jsonify({'message': 'Maximum pageview limit reached'}), 401)
+
+@app.route('/clear', methods=['GET'])
 def clear_session():
-    session['page_views'] = 0
-    return {'message': '200: Successfully cleared session data.'}, 200
-
-@app.route('/articles')
-def index_articles():
-
-    pass
-
-@app.route('/articles/<int:id>')
-def show_article(id):
-
-    pass
+    session.clear()
+    return make_response(jsonify({'message': 'session cleared'}), 200)
 
 if __name__ == '__main__':
     app.run(port=5555)
